@@ -19,20 +19,48 @@ from resulttool.resultutils import checkout_git_dir
 import resulttool.resultutils as resultutils
 
 class ResultsTextReport(object):
+    def __init__(self):
+        self.ptests = {}
+        self.result_types = {'passed': ['PASSED', 'passed'],
+                             'failed': ['FAILED', 'failed', 'ERROR', 'error', 'UNKNOWN'],
+                             'skipped': ['SKIPPED', 'skipped']}
+
+
+    def handle_ptest_result(self, k, status, result):
+        if k == 'ptestresult.sections':
+            return
+        _, suite, test = k.split(".", 2)
+        # Handle 'glib-2.0'
+        if suite not in result['ptestresult.sections']:
+            try:
+                _, suite, suite1, test = k.split(".", 3)
+                if suite + "." + suite1 in result['ptestresult.sections']:
+                    suite = suite + "." + suite1
+            except ValueError:
+                pass
+        if suite not in self.ptests:
+            self.ptests[suite] = {'passed': 0, 'failed': 0, 'skipped': 0, 'duration' : '-', 'failed_testcases': []}
+        for tk in self.result_types:
+            if status in self.result_types[tk]:
+                self.ptests[suite][tk] += 1
+        if suite in result['ptestresult.sections']:
+            if 'duration' in result['ptestresult.sections'][suite]:
+                self.ptests[suite]['duration'] = result['ptestresult.sections'][suite]['duration']
+            if 'timeout' in result['ptestresult.sections'][suite]:
+                self.ptests[suite]['duration'] += " T"
 
     def get_aggregated_test_result(self, logger, testresult):
         test_count_report = {'passed': 0, 'failed': 0, 'skipped': 0, 'failed_testcases': []}
-        result_types = {'passed': ['PASSED', 'passed'],
-                        'failed': ['FAILED', 'failed', 'ERROR', 'error', 'UNKNOWN'],
-                        'skipped': ['SKIPPED', 'skipped']}
         result = testresult.get('result', [])
         for k in result:
             test_status = result[k].get('status', [])
-            for tk in result_types:
-                if test_status in result_types[tk]:
+            for tk in self.result_types:
+                if test_status in self.result_types[tk]:
                     test_count_report[tk] += 1
-            if test_status in result_types['failed']:
+            if test_status in self.result_types['failed']:
                 test_count_report['failed_testcases'].append(k)
+            if k.startswith("ptestresult."):
+                self.handle_ptest_result(k, test_status, result)
         return test_count_report
 
     def print_test_report(self, template_file_name, test_count_reports):
@@ -42,25 +70,32 @@ class ResultsTextReport(object):
         env = Environment(loader=file_loader, trim_blocks=True)
         template = env.get_template(template_file_name)
         havefailed = False
+        haveptest = bool(self.ptests)
         reportvalues = []
         cols = ['passed', 'failed', 'skipped']
-        maxlen = {'passed' : 0, 'failed' : 0, 'skipped' : 0, 'result_id': 0, 'testseries' :0 }
+        maxlen = {'passed' : 0, 'failed' : 0, 'skipped' : 0, 'result_id': 0, 'testseries' : 0, 'ptest' : 0 }
         for line in test_count_reports:
             total_tested = line['passed'] + line['failed'] + line['skipped']
             vals = {}
             vals['result_id'] = line['result_id']
             vals['testseries'] = line['testseries']
             vals['sort'] = line['testseries'] + "_" + line['result_id']
+            vals['failed_testcases'] = line['failed_testcases']
             for k in cols:
                 vals[k] = "%d (%s%%)" % (line[k], format(line[k] / total_tested * 100, '.0f'))
             for k in maxlen:
-                if len(vals[k]) > maxlen[k]:
+                if k in vals and len(vals[k]) > maxlen[k]:
                     maxlen[k] = len(vals[k])
             reportvalues.append(vals)
             if line['failed_testcases']:
                 havefailed = True
+        for ptest in self.ptests:
+            if len(ptest) > maxlen['ptest']:
+                maxlen['ptest'] = len(ptest)
         output = template.render(reportvalues=reportvalues,
                                  havefailed=havefailed,
+                                 haveptest=haveptest,
+                                 ptests=self.ptests,
                                  maxlen=maxlen)
         print(output)
 

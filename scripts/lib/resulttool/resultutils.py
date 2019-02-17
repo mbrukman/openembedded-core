@@ -63,9 +63,11 @@ def append_resultsdata(results, f, configmap=store_map):
         testpath = "/".join(data[res]["configuration"].get(i) for i in configmap[testtype])
         if testpath not in results:
             results[testpath] = {}
-        for i in ['ptestresult.rawlogs', 'ptestresult.sections']:
-            if i in data[res]['result']:
-                del data[res]['result'][i]
+        if 'ptestresult.rawlogs' in data[res]['result']:
+            del data[res]['result']['ptestresult.rawlogs']
+        if 'ptestresult.sections' in data[res]['result']:
+            for i in data[res]['result']['ptestresult.sections']:
+                del data[res]['result']['ptestresult.sections'][i]['log']
         results[testpath][res] = data[res]
 
 #
