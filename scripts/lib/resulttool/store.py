@@ -21,6 +21,7 @@ import scriptpath
 scriptpath.add_bitbake_lib_path()
 scriptpath.add_oe_lib_path()
 import resulttool.resultutils as resultutils
+import oeqa.utils.gitarchive as gitarchive
 
 
 def store(args, logger):
@@ -33,20 +34,40 @@ def store(args, logger):
                 f = os.path.join(root, name)
                 if name == "testresults.json":
                     resultutils.append_resultsdata(results, f)
-                else:
+                elif args.all:
                     dst = f.replace(args.source, tempdir + "/")
                     os.makedirs(os.path.dirname(dst), exist_ok=True)
                     shutil.copyfile(f, dst)
         resultutils.save_resultsdata(results, tempdir)
 
+        if not results and not args.all:
+            if args.allow_empty:
+                logger.info("No results found to store")
+                return 0
+            logger.error("No results found to store")
+            return 1
+
+        keywords = {'branch': None, 'commit': None, 'commit_count': None}
+
+        # Find the branch/commit/commit_count and ensure they all match
+        for suite in results:
+            for result in results[suite]:
+                config = results[suite][result]['configuration']['LAYERS']['meta']
+                for k in keywords:
+                    if keywords[k] is None:
+                        keywords[k] = config.get(k)
+                    if config.get(k) != keywords[k]:
+                        logger.error("Mismatched source commit/branch/count: %s vs %s" % (config.get(k), keywords[k]))
+                        return 1
+
         logger.info('Storing test result into git repository %s' % args.git_dir)
-        subprocess.check_call(["oe-git-archive",
-                               tempdir,
-                               "-g", args.git_dir,
-                               "-b", "{branch}",
-                               "--tag-name", "{branch}/{commit_count}-g{commit}/{tag_number}",
-                               "--commit-msg-subject", "Results of {branch}:{commit}",
-                               "--commit-msg-body", "branch: {branch}\ncommit: {commit}"])
+
+        gitarchive.gitarchive(tempdir, args.git_dir, False, False,
+                              "Results of {branch}:{commit}", "branch: {branch}\ncommit: {commit}", "{branch}",
+                              False, "{branch}/{commit_count}-g{commit}/{tag_number}",
+                              'Test run #{tag_number} of {branch}:{commit}', '',
+                              [], [], False, keywords, logger)
+
     finally:
         subprocess.check_call(["rm", "-rf",  tempdir])
 
@@ -64,4 +85,8 @@ def register_commands(subparsers):
                               help='source file or directory that contain the test result files to be stored')
     parser_build.add_argument('git_dir',
                               help='the location of the git repository to store the results in')
+    parser_build.add_argument('-a', '--all', action='store_true',
+                              help='include all files, not just testresults.json files')
+    parser_build.add_argument('-e', '--allow-empty', action='store_true',
+                              help='don\'t error if no results to store are found')
 
