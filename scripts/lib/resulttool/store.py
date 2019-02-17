@@ -27,14 +27,14 @@ def store(args, logger):
     tempdir = tempfile.mkdtemp(prefix='testresults.')
     try:
         results = {}
-        logger.info('Reading files from %s' % args.source_dir)
-        for root, dirs, files in os.walk(args.source_dir):
+        logger.info('Reading files from %s' % args.source)
+        for root, dirs, files in os.walk(args.source):
             for name in files:
                 f = os.path.join(root, name)
                 if name == "testresults.json":
                     resultutils.append_resultsdata(results, f)
                 else:
-                    dst = f.replace(args.source_dir, tempdir + "/")
+                    dst = f.replace(args.source, tempdir + "/")
                     os.makedirs(os.path.dirname(dst), exist_ok=True)
                     shutil.copyfile(f, dst)
         resultutils.save_resultsdata(results, tempdir)
@@ -54,14 +54,14 @@ def store(args, logger):
 
 def register_commands(subparsers):
     """Register subcommands from this plugin"""
-    parser_build = subparsers.add_parser('store', help='store test result files and directories into git repository',
-                                         description='store the testresults.json files and related directories '
-                                                     'from the source directory into the destination git repository '
-                                                     'with the given git branch',
+    parser_build = subparsers.add_parser('store', help='store test results into a git repository',
+                                         description='takes a results file or directory of results files and stores '
+                                                     'them into the destination git repository, splitting out the results '
+                                                     'files as configured',
                                          group='setup')
     parser_build.set_defaults(func=store)
-    parser_build.add_argument('source_dir',
-                              help='source directory that contain the test result files and directories to be stored')
+    parser_build.add_argument('source',
+                              help='source file or directory that contain the test result files to be stored')
     parser_build.add_argument('git_dir',
                               help='the location of the git repository to store the results in')
 

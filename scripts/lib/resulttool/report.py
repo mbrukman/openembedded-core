@@ -120,12 +120,12 @@ def report(args, logger):
 
 def register_commands(subparsers):
     """Register subcommands from this plugin"""
-    parser_build = subparsers.add_parser('report', help='report test result summary',
-                                         description='report text-based test result summary from the source directory',
+    parser_build = subparsers.add_parser('report', help='summarise test results',
+                                         description='print a text-based summary of the test results',
                                          group='analysis')
     parser_build.set_defaults(func=report)
     parser_build.add_argument('source_dir',
-                              help='source directory that contain the test result files for reporting')
+                              help='source file/directory that contain the test result files to summarise')
     parser_build.add_argument('-b', '--git-branch', default='',
                               help='(optional) default assume source directory contains all available files for '
                                    'reporting unless a git branch was provided where it will try to checkout '

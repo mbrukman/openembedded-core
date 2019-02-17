@@ -17,32 +17,26 @@ import json
 import resulttool.resultutils as resultutils
 
 def merge(args, logger):
-    # FIXME Add -t support for  args.target_result_id
-
-    if os.path.isdir(args.target_result_file):
-        results = resultutils.load_resultsdata(args.target_result_file, configmap=resultutils.store_map)
-        resultutils.append_resultsdata(results, args.base_result_file, configmap=resultutils.store_map)
-        resultutils.save_resultsdata(results, args.target_result_file)
+    if os.path.isdir(args.target_results):
+        results = resultutils.load_resultsdata(args.target_results, configmap=resultutils.store_map)
+        resultutils.append_resultsdata(results, args.base_results, configmap=resultutils.store_map)
+        resultutils.save_resultsdata(results, args.target_results)
     else:
-        results = resultutils.load_resultsdata(args.base_result_file, configmap=resultutils.flatten_map)
-        if os.path.exists(args.target_result_file):
-            resultutils.append_resultsdata(results, args.target_result_file, configmap=resultutils.flatten_map)
-        resultutils.save_resultsdata(results, os.path.dirname(args.target_result_file), fn=os.path.basename(args.target_result_file))
+        results = resultutils.load_resultsdata(args.base_results, configmap=resultutils.flatten_map)
+        if os.path.exists(args.target_results):
+            resultutils.append_resultsdata(results, args.target_results, configmap=resultutils.flatten_map)
+        resultutils.save_resultsdata(results, os.path.dirname(args.target_results), fn=os.path.basename(args.target_results))
 
     return 0
 
 def register_commands(subparsers):
     """Register subcommands from this plugin"""
-    parser_build = subparsers.add_parser('merge', help='merge test results',
-                                         description='merge results from multiple files',
+    parser_build = subparsers.add_parser('merge', help='merge test result files/directories',
+                                         description='merge the results from multiple files/directories into the target file or directory',
                                          group='setup')
     parser_build.set_defaults(func=merge)
-    parser_build.add_argument('base_result_file',
-                              help='base result file provide the base result set')
-    parser_build.add_argument('target_result_file',
-                              help='target result file provide the target result set for merging into the '
-                                   'base result set')
-    parser_build.add_argument('-t', '--target-result-id', default='',
-                              help='(optional) default merge all result sets available from target to base '
-                                   'unless specific target result id was provided')
+    parser_build.add_argument('base_results',
+                              help='the results file/directory to import')
+    parser_build.add_argument('target_results',
+                              help='the target file or directory to merge the base_results with')
 

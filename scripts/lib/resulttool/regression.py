@@ -101,22 +101,17 @@ def register_commands(subparsers):
     """Register subcommands from this plugin"""
 
     parser_build = subparsers.add_parser('regression', help='regression file/directory analysis',
-                                         description='regression analysis comparing base result set to target '
-                                                     'result set',
+                                         description='regression analysis comparing the base set of results to the target results',
                                          group='analysis')
     parser_build.set_defaults(func=regression)
     parser_build.add_argument('base_result',
-                              help='base result file/directory provide the files for base result set')
+                              help='base result file/directory for the comparison')
     parser_build.add_argument('target_result',
-                              help='target result file/directory provide the files for target result set for comparison with '
-                                   'base result')
+                              help='target result file/directory to compare with')
     parser_build.add_argument('-b', '--base-result-id', default='',
-                              help='(optional) default select regression based on configurations unless base result '
-                                   'id was provided')
+                              help='(optional) filter the base results to this result ID')
     parser_build.add_argument('-t', '--target-result-id', default='',
-                              help='(optional) default select regression based on configurations unless target result '
-                                   'id was provided')
-
+                              help='(optional) filter the target results to this result ID')
 
     parser_build = subparsers.add_parser('regression-git', help='regression git analysis',
                                          description='regression analysis comparing base result set to target '
